@@ -1,9 +1,28 @@
 require("dotenv").config();
-const { MongoClient } = require("mongodb");
+const { MongoClient, ObjectId } = require("mongodb");
 const { ApolloServer, gql } = require("apollo-server");
 const bcrypt = require("bcrypt");
-const { DB_URI, DB_NAME } = process.env;
+const jwt = require("jsonwebtoken");
+const { DB_URI, DB_NAME, JWT_SECRET } = process.env;
 const saltRounds = 10;
+
+const getToken = async (user) => {
+  const token = await jwt.sign({ id: user._id }, JWT_SECRET, {
+    expiresIn: "30d",
+  });
+  return token;
+};
+
+const getUserFromToken = async (token, db) => {
+  const tokenPayload = await jwt.verify(token, JWT_SECRET);
+  //   console.log("tokenPayload", tokenPayload);
+  if (!tokenPayload?.id) return null;
+  const id = tokenPayload.id;
+  const user = await db.collection("Users").findOne({ _id: ObjectId(id) });
+  if (!user) return null;
+
+  return user;
+};
 
 async function listDatabases(client) {
   databasesList = await client.db().admin().listDatabases();
@@ -21,9 +40,16 @@ const start = async () => {
   const db = client.db(DB_NAME);
   await listDatabases(client);
 
-  const context = { db };
-
-  const server = new ApolloServer({ typeDefs, resolvers, context });
+  const server = new ApolloServer({
+    typeDefs,
+    resolvers,
+    context: async ({ req }) => {
+      //we need user data on every req
+      const token = req.headers["authorization"];
+      const user = await getUserFromToken(token, db);
+      return { db, user };
+    },
+  });
 
   // The `listen` method launches a web server.
   server.listen().then(({ url }) => {
@@ -90,7 +116,6 @@ const resolvers = {
   User: {
     id: (root, data, context) => {
       //root will show what mutation return in User
-      console.log("root", root);
       return root._id;
     },
   },
@@ -119,26 +144,23 @@ const resolvers = {
           }
         });
       const user = await db.collection("Users").findOne({ email: input.email });
-      console.log("resutl=>", result);
-      console.log("user=>", user);
       return { user: user, token: "token123" };
     },
     signIn: async (root, data, context) => {
+      console.log("context=>", context);
       const { input } = data;
       const { db } = context;
-
       const existUser = await db
         .collection("Users")
         .findOne({ email: input.email });
-      if (!existUser) throw new Error("Invalid Credentials");
+      const validPassword =
+        existUser && bcrypt.compareSync(input.password, existUser.password);
 
-      const validPassword = bcrypt.compareSync(
-        input.password,
-        existUser.password
-      );
-      if (!validPassword) throw new Error("Invalid Credentials");
+      if (!existUser || !validPassword) throw new Error("Invalid Credentials");
 
-      return { token: "token123", user: existUser };
+      const token = await getToken(existUser);
+
+      return { token, user: existUser };
     },
   },
 };

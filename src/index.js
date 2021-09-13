@@ -66,6 +66,7 @@ const typeDefs = gql`
     myTaskList: [TaskList!]!
     myTodo: [ToDo!]!
     getMyToDo(id: ID!): ToDo!
+    getTaskList(id: ID!): TaskList!
   }
 
   type User {
@@ -98,7 +99,6 @@ const typeDefs = gql`
     createTaskList(taskTitle: String!): TaskList!
     updateTaskList(id: ID!, title: String!): TaskList!
     deleteTaskList(id: ID!): Boolean!
-    getTaskList(id: ID!): TaskList!
     addUserToTaskList(userId: ID!, taskListId: ID!): TaskList!
 
     createToDo(content: String!, taskListId: ID!): ToDo!

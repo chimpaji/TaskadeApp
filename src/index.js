@@ -141,6 +141,14 @@ const resolvers = {
       const query = { _id: ObjectId(id) };
       return await db.collection("ToDos").findOne(query);
     },
+    getTaskList: async (root, data, context) => {
+      const { db, user } = context;
+      const { id } = data;
+      if (!user) throw new Error("Authentication Error. Please login");
+
+      const query = { _id: ObjectId(id) };
+      return await db.collection("TaskLists").findOne(query);
+    },
   },
   Mutation: {
     signUp: async (root, data, context) => {
@@ -225,14 +233,7 @@ const resolvers = {
       const result = db.collection("TaskLists").deleteOne(query);
       return true;
     },
-    getTaskList: async (root, data, context) => {
-      const { db, user } = context;
-      const { id } = data;
-      if (!user) throw new Error("Authentication Error. Please login");
 
-      const query = { _id: ObjectId(id) };
-      return await db.collection("TaskLists").findOne(query);
-    },
     addUserToTaskList: async (root, data, context) => {
       const { db, user } = context;
       const { userId, taskListId } = data;

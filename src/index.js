@@ -14,6 +14,8 @@ const getToken = async (user) => {
 };
 
 const getUserFromToken = async (token, db) => {
+  if (!token) return null;
+
   const tokenPayload = await jwt.verify(token, JWT_SECRET);
   //   console.log("tokenPayload", tokenPayload);
   if (!tokenPayload?.id) return null;
@@ -61,7 +63,6 @@ start().catch(console.error);
 
 const typeDefs = gql`
   type Query {
-    myUsers: [User!]!
     myTaskList: [TaskList!]!
     myTodo: [ToDo!]!
   }
@@ -92,6 +93,14 @@ const typeDefs = gql`
   type Mutation {
     signUp(input: SignupInput): AuthUser
     signIn(input: SigninInput): AuthUser
+
+    createTaskList(taskTitle: String!): TaskList!
+    updateTaskList(id: ID!, title: String!): TaskList!
+    deleteTaskList(id: ID!): Boolean!
+    getTaskList(id: ID!): TaskList!
+    addUserToTaskList(userId: ID!, taskListId: ID!): TaskList!
+
+    createToDo(content: String!, taskListId: ID!): ToDo!
   }
 
   input SigninInput {
@@ -113,13 +122,16 @@ const typeDefs = gql`
 `;
 
 const resolvers = {
-  User: {
-    id: (root, data, context) => {
-      //root will show what mutation return in User
-      return root._id;
+  Query: {
+    myTaskList: async (root, data, context) => {
+      const { db, user } = context;
+      if (!user) throw new Error(`Authorization Error. Please login`);
+      return await db
+        .collection("TaskLists")
+        .find({ userIds: user._id })
+        .toArray();
     },
   },
-  Query: {},
   Mutation: {
     signUp: async (root, data, context) => {
       const { db } = context;
@@ -147,6 +159,7 @@ const resolvers = {
       return { user: user, token: "token123" };
     },
     signIn: async (root, data, context) => {
+      //will show db and user data
       console.log("context=>", context);
       const { input } = data;
       const { db } = context;
@@ -161,6 +174,94 @@ const resolvers = {
       const token = await getToken(existUser);
 
       return { token, user: existUser };
+    },
+    createTaskList: async (_, data, context) => {
+      const { taskTitle } = data;
+      const { db, user } = context;
+      console.log(user);
+      if (!user) throw new Error("Authentication Error. Please login");
+
+      const newTaskList = {
+        title: taskTitle,
+        createdAt: new Date().toISOString(),
+        userIds: [user?._id],
+      };
+      const result = await db.collection("TaskLists").insertOne(newTaskList);
+      console.log("result=>", result);
+      const taskList = await db
+        .collection("TaskLists")
+        .findOne({ _id: result?.insertedId });
+      console.log("taskList=>", taskList);
+      return taskList;
+    },
+    updateTaskList: async (root, data, context) => {
+      const { id, title } = data;
+      const { db, user } = context;
+      if (!user) throw new Error("Authentication Error. Please login");
+
+      const query = { _id: ObjectId(id) };
+      const update = { $set: { title } };
+      const options = { returnNewDocument: true };
+      const result = await db.collection("TaskLists").updateOne(query, update);
+
+      return await db.collection("TaskLists").findOne(query);
+    },
+    deleteTaskList: async (root, data, context) => {
+      const { db, user } = context;
+      const { id } = data;
+      if (!user) throw new Error("Authentication Error. Please login");
+      //TODO: check if the user's id is in userIds
+      const query = { _id: ObjectId(id) };
+      const result = db.collection("TaskLists").deleteOne(query);
+      return true;
+    },
+    getTaskList: async (root, data, context) => {
+      const { db, user } = context;
+      const { id } = data;
+      if (!user) throw new Error("Authentication Error. Please login");
+
+      const query = { _id: ObjectId(id) };
+      return await db.collection("TaskLists").findOne(query);
+    },
+    addUserToTaskList: async (root, data, context) => {
+      const { db, user } = context;
+      const { userId, taskListId } = data;
+      if (!user) throw new Error(`Authorization Error. Please login`);
+
+      const query = { _id: ObjectId(taskListId) };
+      const update = { $push: { userIds: ObjectId(userId) } };
+      const existedTaskList = await db.collection("TaskLists").findOne(query);
+      if (!existedTaskList) return null;
+      if (existedTaskList.userIds.find((dbId) => dbId.toString() === userId)) {
+        return existedTaskList;
+      }
+
+      const result = await db.collection("TaskLists").updateOne(query, update);
+      //reducing requesting time to db by using existedTaskList data
+      existedTaskList.userIds.push(ObjectId(userId));
+      return existedTaskList;
+    },
+    createToDo: async (root, data, context) => {
+      const { db, user } = context;
+      const { content, taskListId } = data;
+      if (!user) throw new Error(`Authorization error. Please login`);
+
+      const newToDo = { content, taskListId, isCompleted: false };
+      const result = await db.collection("ToDos").insertOne(newTodo);
+    },
+  },
+  TaskList: {
+    id: ({ _id, id }) => _id || id,
+    progress: () => 0,
+    users: async ({ userIds }, _, { db }) =>
+      Promise.all(
+        userIds.map((userId) => db.collection("Users").findOne({ _id: userId }))
+      ),
+  },
+  User: {
+    id: (root, data, context) => {
+      //root will show what mutation return in User
+      return root._id;
     },
   },
 };

@@ -65,6 +65,7 @@ const typeDefs = gql`
   type Query {
     myTaskList: [TaskList!]!
     myTodo: [ToDo!]!
+    getMyToDo(id: ID!): ToDo!
   }
 
   type User {
@@ -101,6 +102,8 @@ const typeDefs = gql`
     addUserToTaskList(userId: ID!, taskListId: ID!): TaskList!
 
     createToDo(content: String!, taskListId: ID!): ToDo!
+    updateToDo(id: ID!, content: String, isCompleted: Boolean): ToDo!
+    deleteToDo(id: ID!): Boolean!
   }
 
   input SigninInput {
@@ -130,6 +133,13 @@ const resolvers = {
         .collection("TaskLists")
         .find({ userIds: user._id })
         .toArray();
+    },
+    getMyToDo: async (root, data, context) => {
+      const { db, user } = context;
+      const { id } = data;
+      if (!user) throw new Error(`Authorization Error. Please login`);
+      const query = { _id: ObjectId(id) };
+      return await db.collection("ToDos").findOne(query);
     },
   },
   Mutation: {
@@ -247,16 +257,61 @@ const resolvers = {
       if (!user) throw new Error(`Authorization error. Please login`);
 
       const newToDo = { content, taskListId, isCompleted: false };
-      const result = await db.collection("ToDos").insertOne(newTodo);
+      const result = await db.collection("ToDos").insertOne(newToDo);
+      return await db.collection("ToDos").findOne({ _id: result?.insertedId });
+    },
+    updateToDo: async (root, data, context) => {
+      const { db, user } = context;
+      const { id, content, isCompleted } = data;
+      if (!user) throw new Error("Authentication Error. Please login");
+
+      const query = { _id: ObjectId(id) };
+      const update = { $set: data };
+      const resutl = await db.collection("ToDos").updateOne(query, update);
+      return await db.collection("ToDos").findOne(query);
+    },
+    deleteToDo: async (root, data, context) => {
+      const { db, user } = context;
+      const { id } = data;
+
+      const query = { _id: ObjectId(id) };
+      const result = await db.collection("ToDos").deleteOne(query);
+
+      return true;
     },
   },
   TaskList: {
     id: ({ _id, id }) => _id || id,
-    progress: () => 0,
+    progress: async (root, data, context) => {
+      const { db } = context;
+      const { _id } = root;
+      const query = { _id: ObjectId(_id) };
+      const todos = await db.collection("ToDos").find(query).toArray();
+      const completed = todos.filter((todo) => todo.isCompleted === true);
+      if (todos.length === 0) return 0;
+      return (100 * todos.length) / completed.length;
+    },
     users: async ({ userIds }, _, { db }) =>
       Promise.all(
         userIds.map((userId) => db.collection("Users").findOne({ _id: userId }))
       ),
+    todos: async (root, data, context) => {
+      console.log("root=>", root);
+      const { _id } = root;
+      const { db } = context;
+      const query = { taskListId: _id.toString() };
+      const todos = await db.collection("ToDos").find(query).toArray();
+      return todos;
+    },
+  },
+  ToDo: {
+    id: async ({ id, _id }, data, context) => _id || id,
+    taskList: async (root, data, context) => {
+      const { taskListId } = root;
+      const { db } = context;
+      const query = { _id: ObjectId(taskListId) };
+      return await db.collection("TaskLists").findOne(query);
+    },
   },
   User: {
     id: (root, data, context) => {

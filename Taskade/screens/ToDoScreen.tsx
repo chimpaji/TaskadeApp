@@ -16,7 +16,7 @@ import { RootTabScreenProps } from "../types";
 
 const id = "4";
 
-export default function TabOneScreen({
+export default function ToDoScreen({
   navigation,
 }: RootTabScreenProps<"TabOne">) {
   const [title, setTitle] = useState("");

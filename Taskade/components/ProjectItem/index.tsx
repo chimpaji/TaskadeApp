@@ -2,6 +2,7 @@ import React from "react";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { AntDesign } from "@expo/vector-icons";
+import { useNavigation } from "@react-navigation/core";
 
 interface ProjectItemProps {
   project: {
@@ -12,8 +13,10 @@ interface ProjectItemProps {
 }
 
 const ProjectItem = ({ project }: ProjectItemProps) => {
+  const navigation = useNavigation();
   const onPress = () => {
     console.warn(`Opening ${project.title}`);
+    navigation.navigate("ToDoScreen");
   };
   return (
     <TouchableOpacity style={styles.touchable} onPress={onPress}>

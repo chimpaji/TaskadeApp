@@ -4,7 +4,6 @@ node_modules
 /api/.env
 /api/node_modules
 /Taskade/.env
-/Taskade/node_modules
 
 node_modules/
 .expo/

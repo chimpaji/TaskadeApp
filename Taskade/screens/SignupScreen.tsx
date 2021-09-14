@@ -1,6 +1,15 @@
 import { useNavigation } from "@react-navigation/core";
-import React, { useState } from "react";
-import { View, Text, TouchableOpacity, TextInput } from "react-native";
+import React, { useEffect, useState } from "react";
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  TextInput,
+  ActivityIndicator,
+  Alert,
+} from "react-native";
+import { gql, useMutation } from "@apollo/client";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const SignupScreen = () => {
   const navigation = useNavigation();
@@ -8,10 +17,63 @@ const SignupScreen = () => {
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
 
+  const SIGN_UP_MUTATION = gql`
+    mutation Mutation(
+      $email: String!
+      $password: String!
+      $name: String!
+      $avatar: String
+    ) {
+      signUp(
+        input: {
+          email: $email
+          password: $password
+          name: $name
+          avatar: $avatar
+        }
+      ) {
+        token
+        user {
+          id
+          name
+          email
+        }
+      }
+    }
+  `;
+  const [signUp, { data, error, loading }] = useMutation(SIGN_UP_MUTATION);
+
   const onSubmit = () => {
     //submit form
     console.log(email, " ", password);
+    try {
+      signUp({ variables: { email, password, name } });
+      console.log("yes");
+    } catch (error) {
+      Alert.alert("onSubmit eorrr");
+    }
   };
+
+  if (data) {
+    //save token in data to localStorage
+    AsyncStorage.setItem("token", data.signUp.token, (error) => {
+      if (error) {
+        console.log();
+
+        Alert.alert("hi");
+      }
+      //navigate to homeScreen
+      navigation.navigate("Home");
+    });
+  }
+
+  useEffect(() => {
+    if (error) {
+      Alert.alert(error.message);
+      console.log("some error");
+    }
+  }, [error]);
+
   return (
     <View
       style={{
@@ -22,6 +84,7 @@ const SignupScreen = () => {
         padding: 6,
       }}
     >
+      {loading && <ActivityIndicator />}
       <TextInput
         placeholder="Enter your name"
         value={name}
@@ -62,6 +125,7 @@ const SignupScreen = () => {
         }}
       />
       <TouchableOpacity
+        disabled={loading}
         onPress={onSubmit}
         style={{
           backgroundColor: "black",
@@ -71,6 +135,7 @@ const SignupScreen = () => {
           borderRadius: 10,
         }}
       >
+        {loading && <ActivityIndicator size="large" color="#fffff" />}
         <Text
           style={{
             color: "white",

@@ -57,6 +57,11 @@ function RootNavigator() {
   return (
     <Stack.Navigator>
       <Stack.Screen
+        name="SplashScreen"
+        component={SplashScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
         name="SigninScreen"
         component={SigninScreen}
         options={{ title: "Sign in", headerTitleAlign: "center" }}
@@ -66,8 +71,11 @@ function RootNavigator() {
         component={SignupScreen}
         options={{ title: "Sign up", headerTitleAlign: "center" }}
       />
-      <Stack.Screen name="SplashScreen" component={SplashScreen} />
-      <Stack.Screen name="Home" component={ProjectScreen} />
+      <Stack.Screen
+        name="Home"
+        component={ProjectScreen}
+        options={{ headerLeft: () => null }}
+      />
       <Stack.Screen name="ToDoScreen" component={ToDoScreen} />
       <Stack.Screen
         name="NotFound"

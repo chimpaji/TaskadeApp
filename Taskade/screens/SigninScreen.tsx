@@ -1,6 +1,10 @@
+import { useMutation, gql } from "@apollo/client";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useNavigation } from "@react-navigation/core";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
+  ActivityIndicator,
+  Alert,
   Pressable,
   StyleSheet,
   Text,
@@ -14,9 +18,40 @@ const SigninScreen = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
+  const SIGN_IN_MUTATION = gql`
+    mutation Mutation($email: String!, $password: String!) {
+      signIn(input: { email: $email, password: $password }) {
+        token
+        user {
+          id
+          name
+          email
+          avatar
+        }
+      }
+    }
+  `;
+  const [signIn, { data, error, loading }] = useMutation(SIGN_IN_MUTATION);
+
+  if (data) {
+    //save token data to localStorage
+    AsyncStorage.setItem("token", data.signIn.token, (error) => {
+      if (error) console.log(error.message);
+      //navigate to homeScreen
+      navigation.navigate("Home");
+    });
+  }
+
+  useEffect(() => {
+    if (error) {
+      Alert.alert(error.message);
+    }
+  }, [error]);
+
   const onSubmit = () => {
     //submit form
     console.log(email, " ", password);
+    signIn({ variables: { email, password } });
   };
   return (
     <View
@@ -62,8 +97,12 @@ const SigninScreen = () => {
           padding: 10,
           alignItems: "center",
           borderRadius: 10,
+          flexDirection: "row",
+          justifyContent: "center",
         }}
       >
+        {loading && <ActivityIndicator size="large" color="white" />}
+
         <Text
           style={{
             color: "white",

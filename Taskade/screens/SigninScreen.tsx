@@ -26,7 +26,6 @@ const SigninScreen = () => {
           id
           name
           email
-          avatar
         }
       }
     }
@@ -51,7 +50,12 @@ const SigninScreen = () => {
   const onSubmit = () => {
     //submit form
     console.log(email, " ", password);
-    signIn({ variables: { email, password } });
+    try {
+      signIn({ variables: { email, password } });
+      console.log("hiiii");
+    } catch (error) {
+      console.log("signin error=>", error);
+    }
   };
   return (
     <View

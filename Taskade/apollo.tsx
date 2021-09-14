@@ -15,7 +15,6 @@ const authLink = setContext(async (_, { headers }) => {
 
   const token = await AsyncStorage.getItem("token");
   // return the headers to the context so httpLink can read them
-  console.log("headerss=>", headers);
 
   return {
     headers: {

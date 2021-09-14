@@ -15,8 +15,8 @@ interface ProjectItemProps {
 const ProjectItem = ({ project }: ProjectItemProps) => {
   const navigation = useNavigation();
   const onPress = () => {
-    console.warn(`Opening ${project.title}`);
-    navigation.navigate("ToDoScreen");
+    // console.warn(`Opening Project=>${project.title}`);
+    navigation.navigate("ToDoScreen", { id: project.id });
   };
   return (
     <TouchableOpacity style={styles.touchable} onPress={onPress}>

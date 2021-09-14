@@ -1,4 +1,5 @@
 import { useQuery, gql } from "@apollo/client";
+import { useNavigation, useRoute } from "@react-navigation/core";
 import React, { useEffect, useState } from "react";
 import {
   FlatList,
@@ -15,9 +16,12 @@ import { Text, View } from "../components/Themed";
 import TodoItem from "../components/TodoItem";
 import { RootTabScreenProps } from "../types";
 
-export default function ToDoScreen({
-  navigation,
-}: RootTabScreenProps<"TabOne">) {
+export default function ToDoScreen() {
+  const navigation = useNavigation();
+  const route = useRoute();
+  const { id } = route.params;
+  console.log("id=>", id);
+
   const myTaskList = gql`
     query GetTaskListMutation($id: ID!) {
       getTaskList(id: $id) {
@@ -35,24 +39,22 @@ export default function ToDoScreen({
       }
     }
   `;
-  const { data, error, loading } = useQuery(myTaskList);
+  const { data, error, loading } = useQuery(myTaskList, { variables: { id } });
 
   const [title, setTitle] = useState("");
-  const [todos, setTodos] = useState([
-    { id: "1", content: "Buy milk", isCompleted: true },
-    { id: "2", content: "Buy cereal", isCompleted: true },
-    { id: "3", content: "Buy LED", isCompleted: true },
-  ]);
+  const [todos, setTodos] = useState(null);
+  console.log("data=>", data);
 
   useEffect(() => {
     if (data) {
+      setTitle(data.getTaskList.title);
       setTodos(data?.getTaskList?.todos);
     }
   }, [data]);
 
   useEffect(() => {
     if (error) {
-      Alert.alert(error.message);
+      Alert.alert("Error fetching data", error.message);
     }
   }, [error]);
 

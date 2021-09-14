@@ -3,12 +3,14 @@ import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { AntDesign } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/core";
+import moment from "moment";
 
 interface ProjectItemProps {
   project: {
     id: string;
     title: string;
     createdAt: string;
+    progress: number;
   };
 }
 
@@ -36,11 +38,11 @@ const ProjectItem = ({ project }: ProjectItemProps) => {
                 {project.title}
               </Text>
               <Text style={{ opacity: 0.5, marginLeft: 3 }}>
-                {project.createdAt}
+                {moment(project.createdAt).fromNow()}
               </Text>
             </View>
             <View>
-              <Text>Progress</Text>
+              <Text>{project.progress}%</Text>
             </View>
           </View>
           <View style={styles.lowerInfo}>

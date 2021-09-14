@@ -1,4 +1,4 @@
-import { useQuery, gql } from "@apollo/client";
+import { useQuery, gql, useMutation } from "@apollo/client";
 import { useNavigation, useRoute } from "@react-navigation/core";
 import React, { useEffect, useState } from "react";
 import {
@@ -16,21 +16,32 @@ import { Text, View } from "../components/Themed";
 import TodoItem from "../components/TodoItem";
 import { RootTabScreenProps } from "../types";
 
-export default function ToDoScreen() {
-  const navigation = useNavigation();
-  const route = useRoute();
-  const { id } = route.params;
-  console.log("id=>", id);
+const GET_TASKLIST = gql`
+  query GetTaskListMutation($id: ID!) {
+    getTaskList(id: $id) {
+      id
+      title
+      users {
+        name
+        email
+      }
+      todos {
+        id
+        content
+        isCompleted
+      }
+    }
+  }
+`;
 
-  const myTaskList = gql`
-    query GetTaskListMutation($id: ID!) {
-      getTaskList(id: $id) {
+const ADD_TODO = gql`
+  mutation createTodo($content: String!, $taskListId: ID!) {
+    createToDo(content: $content, taskListId: $taskListId) {
+      content
+      isCompleted
+      taskList {
         id
         title
-        users {
-          name
-          email
-        }
         todos {
           id
           content
@@ -38,12 +49,28 @@ export default function ToDoScreen() {
         }
       }
     }
-  `;
-  const { data, error, loading } = useQuery(myTaskList, { variables: { id } });
+  }
+`;
+
+export default function ToDoScreen() {
+  const route = useRoute();
+  const { id } = route.params;
+  // console.log("id=>", id);
+
+  const { data, error, loading } = useQuery(GET_TASKLIST, {
+    variables: { id },
+  });
+
+  const [
+    addTodo,
+    { data: AddTodoData, error: AddTodoError, loading: AddTodoLoading },
+  ] = useMutation(ADD_TODO);
 
   const [title, setTitle] = useState("");
-  const [todos, setTodos] = useState(null);
-  console.log("data=>", data);
+  const [todos, setTodos] = useState([
+    { id: "12456789", content: "", isCompleted: false },
+  ]);
+  // console.log("data=>", data);
 
   useEffect(() => {
     if (data) {
@@ -59,13 +86,16 @@ export default function ToDoScreen() {
   }, [error]);
 
   const createNewItem = (atIndex: number) => {
-    const newTodos = [...todos];
-    newTodos.splice(atIndex, 0, {
-      id: (Math.floor(Math.random() * 100) + 10).toString(),
-      content: "",
-      isCompleted: false,
-    });
-    setTodos(newTodos);
+    console.log("creating Item");
+
+    addTodo({ variables: { content: "", taskListId: id } });
+    // const newTodos = [...todos];
+    // newTodos.splice(atIndex, 0, {
+    //   id: (Math.floor(Math.random() * 100) + 10).toString(),
+    //   content: "",
+    //   isCompleted: false,
+    // });
+    // setTodos(newTodos);
   };
 
   return (

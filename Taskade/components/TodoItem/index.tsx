@@ -1,6 +1,57 @@
+import { useMutation, gql } from "@apollo/client";
 import React, { useEffect, useRef, useState } from "react";
-import { View, Text, TextInput } from "react-native";
+import {
+  View,
+  Text,
+  TextInput,
+  Pressable,
+  TouchableOpacity,
+} from "react-native";
 import Checkbox from "../Checkbox";
+import { Ionicons } from "@expo/vector-icons";
+
+const UPDATE_TODO = gql`
+  mutation UpdateTodo($id: ID!, $content: String, $isCompleted: Boolean) {
+    updateToDo(id: $id, content: $content, isCompleted: $isCompleted) {
+      id
+      content
+      isCompleted
+      taskList {
+        progress
+        todos {
+          id
+          content
+          isCompleted
+        }
+      }
+    }
+  }
+`;
+
+const DELETE_TODO = gql`
+  mutation DeleteToDoMutation($deleteToDoId: ID!) {
+    deleteToDo(id: $deleteToDoId) {
+      id
+      todos {
+        id
+        content
+      }
+    }
+  }
+`;
+
+const GET_TASKLIST = gql`
+  query GetTaskListMutation($id: ID!) {
+    getTaskList(id: $id) {
+      id
+      todos {
+        id
+        content
+        isCompleted
+      }
+    }
+  }
+`;
 
 interface TodoItemProps {
   todo: {
@@ -16,6 +67,22 @@ const TodoItem = ({ todo, onSubmit }: TodoItemProps) => {
   const [isComplete, setIsComplete] = useState(true);
   const inputRef = useRef(null);
 
+  const [updateTodo, { data, error, loading }] = useMutation(UPDATE_TODO);
+  useEffect(() => {
+    if (error) {
+      console.error(error);
+    }
+  }, [error]);
+  const [deleteTodo] = useMutation(DELETE_TODO, {
+    refetchQueries: GET_TASKLIST,
+  });
+
+  const callUpdateTodo = () => {
+    updateTodo({
+      variables: { id: todo.id, content, isCompleted: isComplete },
+    });
+  };
+
   useEffect(() => {
     if (!todo) return;
     setContent(todo.content);
@@ -30,8 +97,6 @@ const TodoItem = ({ todo, onSubmit }: TodoItemProps) => {
   }, [inputRef]);
 
   const onKeyPress = ({ nativeEvent }: any) => {
-    console.log("hi");
-
     if (nativeEvent.key === "Backspace" && content == "") {
       //Delete TodoItem
       console.log("Delete item");
@@ -46,6 +111,7 @@ const TodoItem = ({ todo, onSubmit }: TodoItemProps) => {
         isComplete={isComplete}
         onPress={() => {
           setIsComplete(!isComplete);
+          callUpdateTodo();
         }}
       />
       <TextInput
@@ -56,8 +122,14 @@ const TodoItem = ({ todo, onSubmit }: TodoItemProps) => {
         multiline
         blurOnSubmit
         onSubmitEditing={onSubmit}
+        onEndEditing={callUpdateTodo}
         onKeyPress={onKeyPress}
       />
+      <TouchableOpacity
+        onPress={() => deleteTodo({ variables: { deleteToDoId: todo.id } })}
+      >
+        <Ionicons name="trash-outline" size={24} color="black" />
+      </TouchableOpacity>
     </View>
   );
 };

@@ -103,7 +103,7 @@ const typeDefs = gql`
 
     createToDo(content: String!, taskListId: ID!): ToDo!
     updateToDo(id: ID!, content: String, isCompleted: Boolean): ToDo!
-    deleteToDo(id: ID!): Boolean!
+    deleteToDo(id: ID!): TaskList!
   }
 
   input SigninInput {
@@ -265,10 +265,15 @@ const resolvers = {
       const { db, user } = context;
       const { id, content, isCompleted } = data;
       if (!user) throw new Error("Authentication Error. Please login");
-
       const query = { _id: ObjectId(id) };
-      const update = { $set: data };
-      const resutl = await db.collection("ToDos").updateOne(query, update);
+      console.log("objectId=>", ObjectId(id));
+      const update = { $set: { content, isCompleted } };
+      console.log("updateObject=>", update);
+      const before = await db.collection("ToDos").findOne(query);
+      console.log("before=>", before);
+      const result = await db.collection("ToDos").updateOne(query, update);
+      const find = await db.collection("ToDos").findOne(query);
+      console.log("result=>", find);
       return await db.collection("ToDos").findOne(query);
     },
     deleteToDo: async (root, data, context) => {
@@ -276,9 +281,14 @@ const resolvers = {
       const { id } = data;
 
       const query = { _id: ObjectId(id) };
+      const taskListId = (await db.collection("ToDos").findOne(query))
+        .taskListId;
+      console.log("taskListId=>", taskListId);
       const result = await db.collection("ToDos").deleteOne(query);
 
-      return true;
+      return await db
+        .collection("TaskLists")
+        .findOne({ _id: ObjectId(taskListId) });
     },
   },
   TaskList: {
@@ -286,11 +296,13 @@ const resolvers = {
     progress: async (root, data, context) => {
       const { db } = context;
       const { _id } = root;
-      const query = { _id: ObjectId(_id) };
+      const query = { taskListId: _id.toString() };
       const todos = await db.collection("ToDos").find(query).toArray();
       const completed = todos.filter((todo) => todo.isCompleted === true);
       if (todos.length === 0) return 0;
-      return (100 * todos.length) / completed.length;
+      // const calc = (100 * todos.length) / completed.length;
+      // console.log("calc progress=>", calc);
+      return ((100 * completed.length) / todos.length).toFixed(0);
     },
     users: async ({ userIds }, _, { db }) =>
       Promise.all(

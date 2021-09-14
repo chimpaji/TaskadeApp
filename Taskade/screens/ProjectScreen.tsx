@@ -18,6 +18,7 @@ export default function ProjectScreen() {
         id
         title
         createdAt
+        progress
       }
     }
   `;
@@ -25,12 +26,7 @@ export default function ProjectScreen() {
 
   const [projects, setProjects] = useState(null);
 
-  const project = [
-    { id: "123", title: "first project", createdAt: "4d" },
-    { id: "234", title: "secound project", createdAt: "5d" },
-    { id: "345", title: "third project", createdAt: "6d" },
-  ];
-  console.log("data=>", data);
+  // console.log("data=>", data);
 
   useEffect(() => {
     if (data) {
